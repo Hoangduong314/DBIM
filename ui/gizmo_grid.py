@@ -78,8 +78,11 @@ class DBIM_GGT_grid_endpoints(bpy.types.GizmoGroup):
             R = get_direction_matrix(obj)
             self.p1_gizmo.matrix_basis = obj.matrix_world.normalized()
             self.p1_gizmo.matrix_offset = R
+            self.p1_gizmo.matrix_offset.translation = obj.ifc_StartPoint
+            
             self.p2_gizmo.matrix_basis = obj.matrix_world.normalized()
             self.p2_gizmo.matrix_offset = R
+            self.p2_gizmo.matrix_offset.translation = obj.ifc_EndPoint
 
 def register():
     pass
