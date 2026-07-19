@@ -103,9 +103,8 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
         elif event.type == 'RET' and event.value == 'PRESS':
             if settings.draw_system == 'BOUNDARY':
                 self.handle_confirm(context)
-            else:
-                self.finish(context)
-            return {'FINISHED'}
+                return {'FINISHED'}
+            return {'PASS_THROUGH'}
 
         elif event.type in {'RIGHTMOUSE', 'ESC'} and event.value == 'PRESS':
             self.finish(context)
@@ -369,17 +368,6 @@ class DBIM_OT_start_tool(bpy.types.Operator):
     target: bpy.props.StringProperty(name="Target Type", default="")
     shape: bpy.props.StringProperty(name="Draw Shape", default="")
     
-    def invoke(self, context, event):
-        if self.shape == 'PICK':
-            return context.window_manager.invoke_props_dialog(self)
-        return self.execute(context)
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        if hasattr(scene, "ifc_DrawSettings") and self.shape == 'PICK':
-            layout.prop(scene.ifc_DrawSettings, "offset")
-
     def execute(self, context):
         scene = context.scene
         if hasattr(scene, "ifc_DrawSettings"):

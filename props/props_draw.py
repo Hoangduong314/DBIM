@@ -1,5 +1,10 @@
 import bpy
 
+def update_offset(self, context):
+    for area in context.screen.areas:
+        if area.type == 'VIEW_3D':
+            area.tag_redraw()
+
 class DBIM_DrawSettings(bpy.types.PropertyGroup):
     target_type: bpy.props.EnumProperty(
         name="Target",
@@ -39,7 +44,8 @@ class DBIM_DrawSettings(bpy.types.PropertyGroup):
         name="Offset",
         description="Offset distance for Pick Line or shapes",
         default=0.0,
-        unit='LENGTH'
+        unit='LENGTH',
+        update=update_offset
     )
     
     is_drawing: bpy.props.BoolProperty(
