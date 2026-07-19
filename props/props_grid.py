@@ -31,17 +31,20 @@ def update_grid_points(self, context):
     if self.type == 'MESH':
         try:
             import mathutils
+            import bmesh
             p1 = mathutils.Vector(self.ifc_StartPoint)
             p2 = mathutils.Vector(self.ifc_EndPoint)
             
             with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
                 f.write(f"Updating grid points for {self.name}: p1={p1}, p2={p2}\n")
                 
-            mesh = self.data
-            if len(mesh.vertices) >= 2:
-                mesh.vertices[0].co = p1
-                mesh.vertices[1].co = p2
-                mesh.update()
+            if self.type == 'MESH' and self.data:
+                bm = bmesh.new()
+                bm.verts.new(self.ifc_StartPoint)
+                bm.verts.new(self.ifc_EndPoint)
+                
+                bm.to_mesh(self.data)
+                bm.free()
                 
                 # Tag to force redraw
                 if hasattr(self, 'update_tag'):
