@@ -350,71 +350,62 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
             region = context.region
             rv3d = context.region_data
             
-            p1 = self_ref.grid_origin - self_ref.grid_dir * 1000
-            p2 = self_ref.grid_origin + self_ref.grid_dir * 1000
-            p1_2d = location_3d_to_region_2d(region, rv3d, p1)
-            p2_2d = location_3d_to_region_2d(region, rv3d, p2)
-            if p1_2d and p2_2d:
-                # Calculate VIEW SCALE (pixels per meter) at grid origin
-                origin = self_ref.grid_origin
-                offset = origin + mathutils.Vector((1, 0, 0))
-                o_2d = location_3d_to_region_2d(region, rv3d, origin)
-                off_2d = location_3d_to_region_2d(region, rv3d, offset)
-                if o_2d and off_2d:
-                    px_per_meter = (off_2d - o_2d).length
-                else:
-                    px_per_meter = 100.0  # fallback
-                
-                # Dash sizes in METERS (consistent regardless of zoom)
-                long_dash_m = 0.2
-                short_dash_m = 0.04
-                gap_m = 0.06
-                
-                # Convert to pixels using view scale
-                long_dash = long_dash_m * px_per_meter
-                short_dash = short_dash_m * px_per_meter
-                gap = gap_m * px_per_meter
-                
-                # Clamp dash sizes to reasonable pixel range
-                long_dash = max(8.0, min(long_dash, 60.0))
-                short_dash = max(2.0, min(short_dash, 12.0))
-                gap = max(3.0, min(gap, 20.0))
-                
-                # Clip line to viewport bounds
-                w = region.width
-                h = region.height
-                clipped = _clip_line_to_rect(p1_2d.x, p1_2d.y, p2_2d.x, p2_2d.y, 0, 0, w, h)
-                if clipped:
-                    cx1, cy1, cx2, cy2 = clipped
-                    dx = cx2 - cx1
-                    dy = cy2 - cy1
-                    line_len = math.sqrt(dx * dx + dy * dy)
-                    if line_len > 1:
-                        nx = dx / line_len
-                        ny = dy / line_len
-                        
-                        dashes = []
-                        t = 0.0
-                        while t < line_len:
-                            # Long dash
-                            t_end = min(t + long_dash, line_len)
-                            dashes.append((cx1 + nx * t, cy1 + ny * t))
-                            dashes.append((cx1 + nx * t_end, cy1 + ny * t_end))
-                            t = t_end + gap
-                            if t >= line_len:
-                                break
-                            # Short dash (dot)
-                            t_end = min(t + short_dash, line_len)
-                            dashes.append((cx1 + nx * t, cy1 + ny * t))
-                            dashes.append((cx1 + nx * t_end, cy1 + ny * t_end))
-                            t = t_end + gap
-                        
-                        if dashes:
-                            batch = batch_for_shader(shader, 'LINES', {"pos": dashes})
-                            shader.uniform_float("color", (1.0, 0.2, 0.2, 0.7))
-                            gpu.state.line_width_set(1.5)
-                            batch.draw(shader)
-                            gpu.state.line_width_set(1.0)
+            # Project TWO NEARBY points to get reliable 2D direction
+            origin_3d = self_ref.grid_origin
+            near_3d = origin_3d + self_ref.grid_dir * 1.0  # just 1 unit away
+            o_2d = location_3d_to_region_2d(region, rv3d, origin_3d)
+            n_2d = location_3d_to_region_2d(region, rv3d, near_3d)
+            
+            if o_2d and n_2d:
+                # 2D direction of the grid line on screen
+                dir_2d = n_2d - o_2d
+                if dir_2d.length > 0.1:
+                    dir_2d = dir_2d.normalized()
+                    
+                    # Extend line across entire viewport (diagonal = max possible length)
+                    diag = math.sqrt(region.width ** 2 + region.height ** 2)
+                    ext_p1 = o_2d - dir_2d * diag
+                    ext_p2 = o_2d + dir_2d * diag
+                    
+                    # View scale for dash sizing
+                    px_per_meter = (n_2d - o_2d).length  # pixels per 1 meter
+                    long_dash = max(10.0, min(0.2 * px_per_meter, 50.0))
+                    short_dash = max(3.0, min(0.04 * px_per_meter, 10.0))
+                    gap = max(4.0, min(0.06 * px_per_meter, 16.0))
+                    
+                    # Clip to viewport
+                    clipped = _clip_line_to_rect(ext_p1.x, ext_p1.y, ext_p2.x, ext_p2.y,
+                                                  0, 0, region.width, region.height)
+                    if clipped:
+                        cx1, cy1, cx2, cy2 = clipped
+                        dx = cx2 - cx1
+                        dy = cy2 - cy1
+                        line_len = math.sqrt(dx * dx + dy * dy)
+                        if line_len > 1:
+                            nx = dx / line_len
+                            ny = dy / line_len
+                            
+                            dashes = []
+                            t = 0.0
+                            while t < line_len:
+                                t_end = min(t + long_dash, line_len)
+                                dashes.append((cx1 + nx * t, cy1 + ny * t))
+                                dashes.append((cx1 + nx * t_end, cy1 + ny * t_end))
+                                t = t_end + gap
+                                if t >= line_len: break
+                                t_end = min(t + short_dash, line_len)
+                                dashes.append((cx1 + nx * t, cy1 + ny * t))
+                                dashes.append((cx1 + nx * t_end, cy1 + ny * t_end))
+                                t = t_end + gap
+                            
+                            if dashes:
+                                gpu.state.blend_set('ALPHA')
+                                batch = batch_for_shader(shader, 'LINES', {"pos": dashes})
+                                shader.uniform_float("color", (1.0, 0.2, 0.2, 0.7))
+                                gpu.state.line_width_set(2.0)
+                                batch.draw(shader)
+                                gpu.state.line_width_set(1.0)
+                                gpu.state.blend_set('NONE')
 
         # 3. Draw Lock indicators on locked endpoints
         if getattr(self_ref, 'locked_endpoints', None) and getattr(self_ref, 'lock_enabled', True):
