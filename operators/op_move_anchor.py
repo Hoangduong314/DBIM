@@ -13,6 +13,39 @@ def get_2d_shader():
     except:
         return gpu.shader.from_builtin('UNIFORM_COLOR')
 
+def _clip_line_to_rect(x1, y1, x2, y2, xmin, ymin, xmax, ymax):
+    """Cohen-Sutherland line clipping algorithm.
+    Clips a line segment to a rectangle. Returns (x1,y1,x2,y2) or None.
+    """
+    INSIDE, LEFT, RIGHT, BOTTOM, TOP = 0, 1, 2, 4, 8
+    def _code(x, y):
+        c = INSIDE
+        if x < xmin: c |= LEFT
+        elif x > xmax: c |= RIGHT
+        if y < ymin: c |= BOTTOM
+        elif y > ymax: c |= TOP
+        return c
+    
+    c1, c2 = _code(x1, y1), _code(x2, y2)
+    while True:
+        if not (c1 | c2):
+            return (x1, y1, x2, y2)
+        if c1 & c2:
+            return None
+        c = c1 or c2
+        if c & TOP:
+            x = x1 + (x2 - x1) * (ymax - y1) / (y2 - y1); y = ymax
+        elif c & BOTTOM:
+            x = x1 + (x2 - x1) * (ymin - y1) / (y2 - y1); y = ymin
+        elif c & RIGHT:
+            y = y1 + (y2 - y1) * (xmax - x1) / (x2 - x1); x = xmax
+        elif c & LEFT:
+            y = y1 + (y2 - y1) * (xmin - x1) / (x2 - x1); x = xmin
+        if c == c1:
+            x1, y1, c1 = x, y, _code(x, y)
+        else:
+            x2, y2, c2 = x, y, _code(x, y)
+
 def find_locked_endpoints(target_obj, anchor_index):
     """Find all grid endpoints that lie on the perpendicular to the target grid
     passing through the moving anchor.
@@ -319,41 +352,45 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
             p1_2d = location_3d_to_region_2d(context.region, context.region_data, p1)
             p2_2d = location_3d_to_region_2d(context.region, context.region_data, p2)
             if p1_2d and p2_2d:
-                # Generate center line pattern: ———— · ———— · ————
-                dx = p2_2d.x - p1_2d.x
-                dy = p2_2d.y - p1_2d.y
-                line_len = math.sqrt(dx * dx + dy * dy)
-                if line_len > 0:
-                    nx = dx / line_len
-                    ny = dy / line_len
-                    
-                    long_dash = 20.0
-                    short_dash = 4.0
-                    gap = 6.0
-                    pattern_len = long_dash + gap + short_dash + gap
-                    
-                    dashes = []
-                    t = 0.0
-                    while t < line_len:
-                        # Long dash
-                        t_end = min(t + long_dash, line_len)
-                        dashes.append((p1_2d.x + nx * t, p1_2d.y + ny * t))
-                        dashes.append((p1_2d.x + nx * t_end, p1_2d.y + ny * t_end))
-                        t = t_end + gap
-                        if t >= line_len:
-                            break
-                        # Short dash
-                        t_end = min(t + short_dash, line_len)
-                        dashes.append((p1_2d.x + nx * t, p1_2d.y + ny * t))
-                        dashes.append((p1_2d.x + nx * t_end, p1_2d.y + ny * t_end))
-                        t = t_end + gap
-                    
-                    if dashes:
-                        batch = batch_for_shader(shader, 'LINES', {"pos": dashes})
-                        shader.uniform_float("color", (1.0, 0.2, 0.2, 0.6))
-                        gpu.state.line_width_set(1.5)
-                        batch.draw(shader)
-                        gpu.state.line_width_set(1.0)
+                # Clip line to viewport bounds
+                w = context.region.width
+                h = context.region.height
+                clipped = _clip_line_to_rect(p1_2d.x, p1_2d.y, p2_2d.x, p2_2d.y, 0, 0, w, h)
+                if clipped:
+                    cx1, cy1, cx2, cy2 = clipped
+                    dx = cx2 - cx1
+                    dy = cy2 - cy1
+                    line_len = math.sqrt(dx * dx + dy * dy)
+                    if line_len > 1:
+                        nx = dx / line_len
+                        ny = dy / line_len
+                        
+                        long_dash = 25.0
+                        short_dash = 5.0
+                        gap = 8.0
+                        
+                        dashes = []
+                        t = 0.0
+                        while t < line_len:
+                            # Long dash
+                            t_end = min(t + long_dash, line_len)
+                            dashes.append((cx1 + nx * t, cy1 + ny * t))
+                            dashes.append((cx1 + nx * t_end, cy1 + ny * t_end))
+                            t = t_end + gap
+                            if t >= line_len:
+                                break
+                            # Short dash (dot)
+                            t_end = min(t + short_dash, line_len)
+                            dashes.append((cx1 + nx * t, cy1 + ny * t))
+                            dashes.append((cx1 + nx * t_end, cy1 + ny * t_end))
+                            t = t_end + gap
+                        
+                        if dashes:
+                            batch = batch_for_shader(shader, 'LINES', {"pos": dashes})
+                            shader.uniform_float("color", (1.0, 0.2, 0.2, 0.7))
+                            gpu.state.line_width_set(1.5)
+                            batch.draw(shader)
+                            gpu.state.line_width_set(1.0)
 
         # 3. Draw Lock indicators on locked endpoints
         if getattr(self_ref, 'locked_endpoints', None) and getattr(self_ref, 'lock_enabled', True):
