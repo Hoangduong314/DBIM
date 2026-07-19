@@ -44,7 +44,7 @@ def update_grid_points(self, context):
                 diff = p2 - p1
                 if diff.length > 0.001:
                     dir = diff.normalized()
-                    perp = mathutils.Vector((-dir.y, dir.x, 0)) * 0.05
+                    perp = mathutils.Vector((-dir.y, dir.x, 0)) * 0.0001
                     v1 = bm.verts.new(p1 + perp)
                     v2 = bm.verts.new(p1 - perp)
                     v3 = bm.verts.new(p2 - perp)

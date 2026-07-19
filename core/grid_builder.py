@@ -13,7 +13,7 @@ def create_grid_mesh(p1, p2, name):
     diff = p2 - p1
     if diff.length > 0.001:
         dir = diff.normalized()
-        perp = mathutils.Vector((-dir.y, dir.x, 0)) * 0.05 # 5cm half-width for easy clicking
+        perp = mathutils.Vector((-dir.y, dir.x, 0)) * 0.0001 # 0.1mm half-width so it looks like a line when selected
         
         v1 = bm.verts.new(p1 + perp)
         v2 = bm.verts.new(p1 - perp)
