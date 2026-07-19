@@ -33,19 +33,29 @@ def create_grid_mesh(p1, p2, name):
     scale_factor = scale_val / 100.0
     
     # Add Dash modifier
-    mod = obj.grease_pencil_modifiers.new("Dash", 'GP_DASH')
+    if hasattr(obj, 'grease_pencil_modifiers'):
+        mod = obj.grease_pencil_modifiers.new("Dash", 'GP_DASH')
+    else:
+        mod = obj.modifiers.new("Dash", 'GREASE_PENCIL_DASH')
+
     if hasattr(mod, 'segments') and len(mod.segments) > 0:
         seg = mod.segments[0]
         seg.dash = max(2, int(15 / scale_factor))
         seg.gap = max(1, int(4 / scale_factor))
-        mod.segment_add()
-        if len(mod.segments) > 1:
-            seg2 = mod.segments[1]
-            seg2.dash = max(1, int(3 / scale_factor))
-            seg2.gap = max(1, int(4 / scale_factor))
+        if hasattr(mod, 'segment_add'):
+            mod.segment_add()
+            if len(mod.segments) > 1:
+                seg2 = mod.segments[1]
+                seg2.dash = max(1, int(3 / scale_factor))
+                seg2.gap = max(1, int(4 / scale_factor))
+
             
     # Add Thickness modifier
-    thick_mod = obj.grease_pencil_modifiers.new("Thickness", 'GP_THICK')
+    if hasattr(obj, 'grease_pencil_modifiers'):
+        thick_mod = obj.grease_pencil_modifiers.new("Thickness", 'GP_THICK')
+    else:
+        thick_mod = obj.modifiers.new("Thickness", 'GREASE_PENCIL_THICKNESS')
+
     thick_mod.thickness_factor = 1.5
     
     # Create frame and stroke
