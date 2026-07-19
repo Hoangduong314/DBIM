@@ -1,5 +1,4 @@
 import bpy
-import bgl
 import gpu
 from gpu_extras.batch import batch_for_shader
 import math
@@ -202,12 +201,6 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         shader.uniform_float("color", (1.0, 0.5, 0.0, 1.0)) # Blender Orange
         
         # In modern Blender, gpu.state is used for line width
-        try:
-            gpu.state.line_width_set(2.0)
-            batch.draw(shader)
-            gpu.state.line_width_set(1.0)
-        except AttributeError:
-            # Fallback for older Blender versions (bgl is deprecated but might be needed)
-            bgl.glLineWidth(2.0)
-            batch.draw(shader)
-            bgl.glLineWidth(1.0)
+        gpu.state.line_width_set(2.0)
+        batch.draw(shader)
+        gpu.state.line_width_set(1.0)
