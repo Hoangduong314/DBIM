@@ -347,14 +347,42 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
                 
         # 2. Draw Extension Tracking Line as CENTER LINE (long-short-long dashed)
         if getattr(self_ref, 'extend_mode', False):
+            region = context.region
+            rv3d = context.region_data
+            
             p1 = self_ref.grid_origin - self_ref.grid_dir * 1000
             p2 = self_ref.grid_origin + self_ref.grid_dir * 1000
-            p1_2d = location_3d_to_region_2d(context.region, context.region_data, p1)
-            p2_2d = location_3d_to_region_2d(context.region, context.region_data, p2)
+            p1_2d = location_3d_to_region_2d(region, rv3d, p1)
+            p2_2d = location_3d_to_region_2d(region, rv3d, p2)
             if p1_2d and p2_2d:
+                # Calculate VIEW SCALE (pixels per meter) at grid origin
+                origin = self_ref.grid_origin
+                offset = origin + mathutils.Vector((1, 0, 0))
+                o_2d = location_3d_to_region_2d(region, rv3d, origin)
+                off_2d = location_3d_to_region_2d(region, rv3d, offset)
+                if o_2d and off_2d:
+                    px_per_meter = (off_2d - o_2d).length
+                else:
+                    px_per_meter = 100.0  # fallback
+                
+                # Dash sizes in METERS (consistent regardless of zoom)
+                long_dash_m = 0.2
+                short_dash_m = 0.04
+                gap_m = 0.06
+                
+                # Convert to pixels using view scale
+                long_dash = long_dash_m * px_per_meter
+                short_dash = short_dash_m * px_per_meter
+                gap = gap_m * px_per_meter
+                
+                # Clamp dash sizes to reasonable pixel range
+                long_dash = max(8.0, min(long_dash, 60.0))
+                short_dash = max(2.0, min(short_dash, 12.0))
+                gap = max(3.0, min(gap, 20.0))
+                
                 # Clip line to viewport bounds
-                w = context.region.width
-                h = context.region.height
+                w = region.width
+                h = region.height
                 clipped = _clip_line_to_rect(p1_2d.x, p1_2d.y, p2_2d.x, p2_2d.y, 0, 0, w, h)
                 if clipped:
                     cx1, cy1, cx2, cy2 = clipped
@@ -364,10 +392,6 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
                     if line_len > 1:
                         nx = dx / line_len
                         ny = dy / line_len
-                        
-                        long_dash = 25.0
-                        short_dash = 5.0
-                        gap = 8.0
                         
                         dashes = []
                         t = 0.0
