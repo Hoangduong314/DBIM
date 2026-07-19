@@ -12,6 +12,7 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
     
     _timer = None
     _state = 0 # 0: waiting for first release, 1: transforming, 2: finished
+    _temp_kmi = None
 
     def invoke(self, context, event):
         self.target_obj = context.active_object
@@ -52,6 +53,11 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         self._state = 0
         context.window_manager.modal_handler_add(self)
         self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        
+        # Tạm thời gán phím TAB thành lệnh khóa trục X trong Transform Modal Map
+        km = context.window_manager.keyconfigs.user.keymaps.get('Transform Modal Map')
+        if km:
+            self._temp_kmi = km.keymap_items.new_modal('AXIS_X', 'TAB', 'PRESS')
         
         return {'RUNNING_MODAL'}
 
@@ -104,3 +110,9 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         if getattr(self, 'target_obj', None) and self.target_obj.name in bpy.data.objects:
             self.target_obj.select_set(True)
             context.view_layer.objects.active = self.target_obj
+            
+        if getattr(self, '_temp_kmi', None):
+            km = context.window_manager.keyconfigs.user.keymaps.get('Transform Modal Map')
+            if km:
+                km.keymap_items.remove(self._temp_kmi)
+            self._temp_kmi = None
