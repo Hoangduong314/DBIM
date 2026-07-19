@@ -56,7 +56,6 @@ def create_grid_gp(grid_obj, p1, p2):
         gp_data.materials.append(mat)
         
         layer = gp_data.layers.new("CenterLine")
-        layer.line_change = 0
         
         mod = gp_obj.grease_pencil_modifiers.new("Dash", 'GP_DASH')
         if hasattr(mod, 'segments') and len(mod.segments) > 0:
