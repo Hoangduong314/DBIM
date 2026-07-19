@@ -9,6 +9,7 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
     anchor_index: bpy.props.IntProperty(name="Anchor Index", default=0) # 0 for start, 1 for end
     
     _timer = None
+    _state = 0 # 0: waiting for initial release, 1: transforming, 2: finishing
 
     def invoke(self, context, event):
         self.target_obj = context.active_object
@@ -26,53 +27,59 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         self.empty = context.active_object
         self.empty.name = "DBIM_Temp_Anchor"
         
-        # Hide it? It's fine to leave it visible to give visual feedback
         # Ensure only the empty is selected
         bpy.ops.object.select_all(action='DESELECT')
         self.empty.select_set(True)
         context.view_layer.objects.active = self.empty
 
-        # Add modal timer
-        self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        # Add modal handler FIRST so we get events before transform.translate
         context.window_manager.modal_handler_add(self)
-
-        # Invoke the built-in transform operator
-        # (True, True, False) limits translation to X and Y axes, locking Z
-        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=(True, True, False), orient_type='GLOBAL')
+        self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        self._state = 0
 
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event):
         # Prevent errors if empty is accidentally deleted
-        if not self.empty or self.empty.name not in bpy.data.objects:
+        if getattr(self, 'empty', None) is None or self.empty.name not in bpy.data.objects:
             self.cleanup(context)
             return {'FINISHED'}
 
         # Synchronize location from Empty to Target Object
-        if self.target_obj:
+        if getattr(self, 'target_obj', None):
             if self.anchor_index == 0:
                 self.target_obj.ifc_StartPoint = self.empty.location
             else:
                 self.target_obj.ifc_EndPoint = self.empty.location
+            # Force update to show changes in real-time
+            self.target_obj.update_tag()
 
-        # When transform.translate finishes, it does NOT send a special event to our operator.
-        # But we can detect if the user clicks LEFTMOUSE, RIGHTMOUSE, ESC, or RET.
-        # transform.translate runs modally and handles these events, but our timer STILL runs.
-        # Wait, if transform.translate handles LEFTMOUSE, we might receive it as PASS_THROUGH.
-        # Actually, if transform.translate is finished, it returns {'FINISHED'}, and the active operator drops.
-        # In Blender, if the active object is NO LONGER being transformed, the transform modal is dead.
-        # How to check if transform is dead?
-        # A robust way: if event type is one of the termination keys and value is RELEASE or PRESS.
-        
-        if event.type in {'LEFTMOUSE', 'RIGHTMOUSE', 'ESC', 'RET'} and event.value == 'RELEASE':
-            # Cleanup
-            self.cleanup(context)
-            return {'FINISHED'}
+        # State 0: Wait for user to release mouse after clicking the gizmo
+        if self._state == 0:
+            if event.type == 'LEFTMOUSE' and event.value == 'RELEASE':
+                self._state = 1
+                # Invoke the built-in transform operator
+                bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=(True, True, False), orient_type='GLOBAL')
+            return {'PASS_THROUGH'}
+
+        # State 1: Transforming (transform.translate is running natively)
+        elif self._state == 1:
+            if event.type in {'LEFTMOUSE', 'RIGHTMOUSE', 'ESC', 'RET'} and event.value == 'PRESS':
+                # User confirmed or cancelled the translation.
+                # transform.translate will consume this PRESS and finish.
+                self._state = 2
+            return {'PASS_THROUGH'}
+
+        # State 2: Finishing
+        elif self._state == 2:
+            if event.type in {'LEFTMOUSE', 'RIGHTMOUSE', 'ESC', 'RET'} and event.value == 'RELEASE':
+                self.cleanup(context)
+                return {'FINISHED'}
 
         return {'PASS_THROUGH'}
 
     def cleanup(self, context):
-        if self._timer:
+        if getattr(self, '_timer', None):
             context.window_manager.event_timer_remove(self._timer)
             self._timer = None
         
