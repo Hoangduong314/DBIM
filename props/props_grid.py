@@ -47,6 +47,11 @@ def update_grid_points(self, context):
                 if hasattr(self, 'update_tag'):
                     self.update_tag(refresh={'DATA'})
                     
+                # Update GP if not currently being dragged
+                if not self.get("dbim_is_moving_anchor", False):
+                    from ..core.grid_builder import update_grid_gp
+                    update_grid_gp(self)
+                    
         except Exception as e:
             with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
                 f.write(f"ERROR: {str(e)}\n")
