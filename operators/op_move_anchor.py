@@ -90,7 +90,7 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         self.grid_dir = (ep - sp).normalized()
         self.grid_origin = sp
         
-        self.extend_mode = False
+        self.extend_mode = True
         self.lock_enabled = True
         self.snap_point_3d = None
         self._state = 0
