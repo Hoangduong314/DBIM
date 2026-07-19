@@ -12,6 +12,11 @@ class DBIM_PT_category_panel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         
+        if hasattr(scene, "dbim_view_scale"):
+            row = layout.row()
+            row.prop(scene, "dbim_view_scale", text="Scale")
+            layout.separator()
+            
         if hasattr(scene, "ifc_DrawSettings"):
             draw_settings = scene.ifc_DrawSettings
             

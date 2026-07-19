@@ -87,7 +87,22 @@ def create_grid_gp(grid_obj, p1, p2):
         thick_mod = gp_obj.grease_pencil_modifiers.new("Thickness", 'GP_THICK')
         thick_mod.thickness_factor = 1.5
     
-    # Update stroke points
+    # Update stroke points and Dash modifier based on scale
+    try:
+        scale_val = int(bpy.context.scene.dbim_view_scale)
+    except:
+        scale_val = 100
+    
+    scale_factor = scale_val / 100.0
+    
+    # Update Dash modifier
+    mod = gp_obj.grease_pencil_modifiers.get("Dash")
+    if mod and hasattr(mod, 'segments') and len(mod.segments) > 1:
+        mod.segments[0].dash = max(2, int(15 / scale_factor))
+        mod.segments[0].gap = max(1, int(4 / scale_factor))
+        mod.segments[1].dash = max(1, int(3 / scale_factor))
+        mod.segments[1].gap = max(1, int(4 / scale_factor))
+        
     gp_data = gp_obj.data
     if len(gp_data.layers) > 0:
         layer = gp_data.layers[0]
