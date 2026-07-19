@@ -269,8 +269,23 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
             
             if (p2_2d - p1_2d).length > 0.001:
                 perp = mathutils.Vector((-(p2_2d.y - p1_2d.y), (p2_2d.x - p1_2d.x), 0)).normalized()
-                p1_offset = p1_2d + perp * settings.offset
-                p2_offset = p2_2d + perp * settings.offset
+                
+                # Determine which side of the line the mouse is on
+                # First convert mouse position back to world space on Z=0 plane
+                mouse_ray_dir = view_vector
+                # Intersection of ray with Z=0 plane: ray_origin.z + t * ray_dir.z = 0
+                if abs(mouse_ray_dir.z) > 1e-6:
+                    t = -ray_origin.z / mouse_ray_dir.z
+                    mouse_world = ray_origin + mouse_ray_dir * t
+                    mouse_2d = mathutils.Vector((mouse_world.x, mouse_world.y, 0))
+                    
+                    # Dot product with perp to determine side
+                    side = 1.0 if (mouse_2d - p1_2d).dot(perp) > 0 else -1.0
+                else:
+                    side = 1.0
+                
+                p1_offset = p1_2d + perp * settings.offset * side
+                p2_offset = p2_2d + perp * settings.offset * side
                 
                 return [p1_offset, p2_offset]
         return []
