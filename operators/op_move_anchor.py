@@ -5,7 +5,7 @@ import math
 import mathutils
 from bpy_extras.view3d_utils import region_2d_to_origin_3d, region_2d_to_vector_3d, location_3d_to_region_2d
 
-LOCK_TOLERANCE = 0.001  # Distance threshold to consider endpoints "aligned" (in Blender units)
+LOCK_TOLERANCE = 0.01  # Distance threshold for perpendicular alignment (in Blender units)
 
 def get_2d_shader():
     try:
@@ -14,13 +14,29 @@ def get_2d_shader():
         return gpu.shader.from_builtin('UNIFORM_COLOR')
 
 def find_locked_endpoints(target_obj, anchor_index):
-    """Find all grid endpoints that are coincident with the target anchor.
+    """Find all grid endpoints that lie on the perpendicular to the target grid
+    passing through the moving anchor.
+    
+    The perpendicular check works as follows:
+    - Target grid has direction D (from StartPoint to EndPoint).
+    - The perpendicular line at anchor P_A goes in the direction N = perp(D).
+    - For another endpoint P_B to be on this perpendicular:
+      abs(dot(P_B - P_A, D)) < tolerance  (i.e. zero component along grid direction)
+    
     Returns a list of tuples: (obj, endpoint_index) where endpoint_index is 0 (Start) or 1 (End).
     """
     if anchor_index == 0:
         anchor_pos = mathutils.Vector(target_obj.ifc_StartPoint)
     else:
         anchor_pos = mathutils.Vector(target_obj.ifc_EndPoint)
+    
+    # Grid direction (2D, XY plane)
+    sp = mathutils.Vector(target_obj.ifc_StartPoint)
+    ep = mathutils.Vector(target_obj.ifc_EndPoint)
+    grid_dir_2d = (ep.xy - sp.xy)
+    if grid_dir_2d.length < 1e-6:
+        return []
+    grid_dir_2d = grid_dir_2d.normalized()
     
     locked = []
     for obj in bpy.context.scene.objects:
@@ -31,13 +47,17 @@ def find_locked_endpoints(target_obj, anchor_index):
         if not hasattr(obj, "ifc_StartPoint") or not hasattr(obj, "ifc_EndPoint"):
             continue
             
-        sp = mathutils.Vector(obj.ifc_StartPoint)
-        ep = mathutils.Vector(obj.ifc_EndPoint)
+        obj_sp = mathutils.Vector(obj.ifc_StartPoint)
+        obj_ep = mathutils.Vector(obj.ifc_EndPoint)
         
-        # Check XY distance only (ignore Z differences)
-        if (sp.xy - anchor_pos.xy).length < LOCK_TOLERANCE:
+        # Check StartPoint: is it on the perpendicular to our grid at anchor_pos?
+        delta_sp = obj_sp.xy - anchor_pos.xy
+        if abs(delta_sp.dot(grid_dir_2d)) < LOCK_TOLERANCE:
             locked.append((obj, 0))
-        if (ep.xy - anchor_pos.xy).length < LOCK_TOLERANCE:
+        
+        # Check EndPoint
+        delta_ep = obj_ep.xy - anchor_pos.xy
+        if abs(delta_ep.dot(grid_dir_2d)) < LOCK_TOLERANCE:
             locked.append((obj, 1))
     
     return locked
@@ -193,16 +213,18 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
                 self.target_obj.ifc_EndPoint = (loc.x, loc.y, self.initial_z)
             self.target_obj.update_tag()
             
-            # APPLY RESULT to locked endpoints
+            # APPLY RESULT to locked endpoints using DELTA displacement
             if self.lock_enabled and self.locked_endpoints:
-                for (obj, idx) in self.locked_endpoints:
+                delta_x = loc.x - self.initial_loc[0]
+                delta_y = loc.y - self.initial_loc[1]
+                for i, (obj, idx) in enumerate(self.locked_endpoints):
                     if obj.name not in bpy.data.objects:
                         continue
-                    obj_z = obj.ifc_StartPoint[2] if idx == 0 else obj.ifc_EndPoint[2]
+                    orig = self.locked_initial[i]
                     if idx == 0:
-                        obj.ifc_StartPoint = (loc.x, loc.y, obj_z)
+                        obj.ifc_StartPoint = (orig[0] + delta_x, orig[1] + delta_y, orig[2])
                     else:
-                        obj.ifc_EndPoint = (loc.x, loc.y, obj_z)
+                        obj.ifc_EndPoint = (orig[0] + delta_x, orig[1] + delta_y, orig[2])
                     obj.update_tag()
             
             context.area.tag_redraw()
