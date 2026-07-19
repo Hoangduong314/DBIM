@@ -17,9 +17,9 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
 
         # Get the anchor's initial 3D position
         if self.anchor_index == 0:
-            anchor_loc = self.target_obj.ifc_StartPoint.copy()
+            anchor_loc = tuple(self.target_obj.ifc_StartPoint)
         else:
-            anchor_loc = self.target_obj.ifc_EndPoint.copy()
+            anchor_loc = tuple(self.target_obj.ifc_EndPoint)
 
         # Create the Dummy Empty
         bpy.ops.object.empty_add(type='PLAIN_AXES', location=anchor_loc)
