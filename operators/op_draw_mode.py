@@ -94,7 +94,11 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
                 return {'PASS_THROUGH'}
                 
             if settings.draw_shape == 'PICK':
-                self.handle_pick_line(context, event)
+                if hasattr(self, 'drawn_points') and len(self.drawn_points) == 2:
+                    self.handle_pick_line(context, event)
+                    return {'RUNNING_MODAL'}
+                else:
+                    return {'PASS_THROUGH'}
             else:
                 self.handle_draw(context)
                 
