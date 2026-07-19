@@ -38,7 +38,7 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
 
         # Invoke the built-in transform operator
         # (True, True, False) limits translation to X and Y axes, locking Z
-        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=(True, True, False), constraint_orientation='GLOBAL')
+        bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=(True, True, False), orient_type='GLOBAL')
 
         return {'RUNNING_MODAL'}
 
