@@ -220,7 +220,7 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
                 p1_world = obj.matrix_world @ p1_local
                 p2_world = obj.matrix_world @ p2_local
                 
-        # 2. If ray_cast fails, try finding nearest edge in 2D for linework (0 faces)
+        # 2. If ray_cast fails, try finding nearest edge in 2D for linework (0 faces) or GP Grids
         if p1_world is None:
             mouse_pos = mathutils.Vector(coord)
             min_dist_2d = 20.0 # 20 pixels snap distance
@@ -249,7 +249,6 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
                         mouse_vec = mouse_pos - p1_2d
                         proj = mouse_vec.dot(line_dir)
                         
-                        dist = 0
                         if proj <= 0:
                             dist = (mouse_pos - p1_2d).length
                         elif proj >= line_len:
@@ -262,6 +261,44 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
                             min_dist_2d = dist
                             p1_world = v1
                             p2_world = v2
+                elif obj.type == 'GREASEPENCIL' and getattr(obj, "is_IfcGridAxis", False):
+                    matrix = obj.matrix_world
+                    if len(obj.data.layers) > 0 and len(obj.data.layers[0].frames) > 0:
+                        frame = obj.data.layers[0].frames[0]
+                        if len(frame.strokes) > 0:
+                            stroke = frame.strokes[0]
+                            if len(stroke.points) >= 2:
+                                v1 = matrix @ stroke.points[0].co
+                                v2 = matrix @ stroke.points[-1].co
+                                
+                                p1_2d = location_3d_to_region_2d(region, rv3d, v1)
+                                p2_2d = location_3d_to_region_2d(region, rv3d, v2)
+                                
+                                if not p1_2d or not p2_2d:
+                                    continue
+                                    
+                                line_vec = p2_2d - p1_2d
+                                line_len = line_vec.length
+                                if line_len < 0.001:
+                                    continue
+                                    
+                                line_dir = line_vec / line_len
+                                mouse_vec = mouse_pos - p1_2d
+                                proj = mouse_vec.dot(line_dir)
+                                
+                                dist = 0
+                                if proj <= 0:
+                                    dist = (mouse_pos - p1_2d).length
+                                elif proj >= line_len:
+                                    dist = (mouse_pos - p2_2d).length
+                                else:
+                                    closest_pt = p1_2d + line_dir * proj
+                                    dist = (mouse_pos - closest_pt).length
+                                    
+                                if dist < min_dist_2d:
+                                    min_dist_2d = dist
+                                    p1_world = v1
+                                    p2_world = v2
 
         if p1_world and p2_world:
             p1_2d = mathutils.Vector((p1_world.x, p1_world.y, 0))

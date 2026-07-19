@@ -21,7 +21,7 @@ class DBIM_GGT_grid_endpoints(bpy.types.GizmoGroup):
     @classmethod
     def poll(cls, context):
         obj = context.active_object
-        return obj and obj.type == 'MESH' and obj.select_get() and getattr(obj, "is_IfcGridAxis", False)
+        return obj and obj.type in {'MESH', 'GREASEPENCIL'} and obj.select_get() and getattr(obj, "is_IfcGridAxis", False)
 
     def setup(self, context):
         def get_p1():

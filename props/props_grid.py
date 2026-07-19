@@ -1,85 +1,60 @@
 import bpy
-
-def get_next_grid_name(current_name):
-    # Auto increment letters or numbers
-    if not current_name:
-        return "1"
-        
-    # Try to increment as a number
-    try:
-        num = int(current_name)
-        return str(num + 1)
-    except ValueError:
-        pass
-        
-    # Try to increment as a letter (e.g. A -> B, Z -> AA)
-    if current_name.isalpha():
-        # Simple single character increment
-        if len(current_name) == 1:
-            char = current_name.upper()
-            if char == 'Z':
-                return 'AA'
-            return chr(ord(char) + 1)
-            
-    return current_name + "_new"
+import mathutils
 
 def update_grid_points(self, context):
+    """
+    Called when ifc_StartPoint or ifc_EndPoint changes.
+    Updates the physical vertices or stroke points so the grid moves correctly.
+    """
     if not self.is_IfcGridAxis:
         return
         
-    # Ensure mesh updates when points are changed
-    if self.type == 'MESH':
-        try:
-            import mathutils
+    try:
+        if self.type == 'MESH':
             import bmesh
-            p1 = mathutils.Vector(self.ifc_StartPoint)
-            p2 = mathutils.Vector(self.ifc_EndPoint)
-            
-            with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
-                f.write(f"Updating grid points for {self.name}: p1={p1}, p2={p2}\n")
-                
-            if self.type == 'MESH' and self.data:
+            if self.data:
                 bm = bmesh.new()
+                p1 = mathutils.Vector(self.ifc_StartPoint)
+                p2 = mathutils.Vector(self.ifc_EndPoint)
+                
                 v1 = bm.verts.new(self.ifc_StartPoint)
                 v2 = bm.verts.new(self.ifc_EndPoint)
-                # No edges or faces
                 
                 bm.to_mesh(self.data)
                 bm.free()
                 
-                # Tag to force redraw
-                if hasattr(self, 'update_tag'):
-                    self.update_tag(refresh={'DATA'})
-                    
-        except Exception as e:
-            with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
-                f.write(f"ERROR: {str(e)}\n")
+                self.data.update()
+        elif self.type == 'GREASEPENCIL':
+            if len(self.data.layers) > 0 and len(self.data.layers[0].frames) > 0:
+                frame = self.data.layers[0].frames[0]
+                if len(frame.strokes) > 0:
+                    stroke = frame.strokes[0]
+                    if len(stroke.points) >= 2:
+                        stroke.points[0].co = self.ifc_StartPoint
+                        stroke.points[1].co = self.ifc_EndPoint
+    except Exception as e:
+        print(f"Error updating grid points: {e}")
 
-class DBIM_GridSettings(bpy.types.PropertyGroup):
-    next_name: bpy.props.StringProperty(
-        name="Next Grid Name",
-        description="Name for the next grid to be drawn",
-        default="1"
-    )
+def update_grid_name(self, context):
+    """Update object name when ifc_Name changes"""
+    if self.is_IfcGridAxis:
+        self.name = f"IfcGridAxis_{self.ifc_Name}"
 
 def register():
     bpy.types.Object.is_IfcGridAxis = bpy.props.BoolProperty(
-        name="Is DBIM Grid",
-        description="True if this object is a DBIM Grid line",
-        default=False
+        name="Is IFC Grid Axis",
+        default=False,
+        description="Identifies this object as an IFC Grid Axis"
     )
-    bpy.types.Object.ifc_AxisTag = bpy.props.StringProperty(
-        name="Grid Name",
-        description="Name/Label of the grid line",
-        default=""
+
+    bpy.types.Object.ifc_Name = bpy.props.StringProperty(
+        name="Name",
+        default="1",
+        update=update_grid_name
     )
-    
-    bpy.types.Scene.ifc_GridSettings = bpy.props.PointerProperty(type=DBIM_GridSettings)
 
 def unregister():
     if hasattr(bpy.types.Object, "is_IfcGridAxis"):
         del bpy.types.Object.is_IfcGridAxis
-    if hasattr(bpy.types.Object, "ifc_AxisTag"):
-        del bpy.types.Object.ifc_AxisTag
-    if hasattr(bpy.types.Scene, "ifc_GridSettings"):
-        del bpy.types.Scene.ifc_GridSettings
+    if hasattr(bpy.types.Object, "ifc_Name"):
+        del bpy.types.Object.ifc_Name

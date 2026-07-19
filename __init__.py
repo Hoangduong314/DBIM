@@ -12,14 +12,11 @@ bl_info = {
 
 import bpy
 from . import auto_load
-from .core import gpu_grid_draw
 
 auto_load.init(__name__)
 
 def register():
     auto_load.register()
-    gpu_grid_draw.register()
 
 def unregister():
-    gpu_grid_draw.unregister()
     auto_load.unregister()
