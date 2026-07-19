@@ -26,7 +26,7 @@ def draw_grids_3d():
                 p1 = obj.matrix_world @ bpy.mathutils.Vector(obj.ifc_StartPoint)
                 p2 = obj.matrix_world @ bpy.mathutils.Vector(obj.ifc_EndPoint)
                 lines.append((p1, p2))
-            except:
+            except Exception as ex:
                 pass
 
     if not lines:
@@ -36,10 +36,6 @@ def draw_grids_3d():
     dash_long = 15.0 / scale_factor
     gap_short = 4.0 / scale_factor
     dash_short = 3.0 / scale_factor
-    
-    # We will compute the segments in 3D space.
-    # Note: A true screen-space dashed line requires a custom shader, 
-    # but calculating world-space dashes based on a fixed scale is often good enough for CAD.
     
     dash_verts = []
     
@@ -80,30 +76,34 @@ def draw_grids_3d():
     except:
         shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
 
-    batch = batch_for_shader(shader, 'LINES', {"pos": dash_verts})
+    try:
+        batch = batch_for_shader(shader, 'LINES', {"pos": dash_verts})
 
-    gpu.state.blend_set('ALPHA')
-    gpu.state.line_width_set(1.5)
-    
-    # Optional: depth_test_set('NONE') if you want grids to show through objects
-    # gpu.state.depth_test_set('NONE')
+        gpu.state.blend_set('ALPHA')
+        gpu.state.line_width_set(1.5)
 
-    shader.bind()
-    shader.uniform_float("color", (0.8, 0.2, 0.2, 1.0)) # Red dashed line
-    batch.draw(shader)
-    
-    gpu.state.blend_set('NONE')
-    gpu.state.line_width_set(1.0)
-    # gpu.state.depth_test_set('LESS_EQUAL')
+        shader.bind()
+        shader.uniform_float("color", (0.8, 0.2, 0.2, 1.0)) # Red dashed line
+        batch.draw(shader)
+        
+        gpu.state.blend_set('NONE')
+        gpu.state.line_width_set(1.0)
+    except Exception as e:
+        with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
+            f.write(f"GPU DRAW ERROR: {str(e)}\n")
 
 
 def register():
     global _handle
     if _handle is None:
         _handle = bpy.types.SpaceView3D.draw_handler_add(draw_grids_3d, (), 'WINDOW', 'POST_VIEW')
+        with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
+            f.write("GPU DRAW REGISTERED\n")
 
 def unregister():
     global _handle
     if _handle is not None:
         bpy.types.SpaceView3D.draw_handler_remove(_handle, 'WINDOW')
         _handle = None
+        with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
+            f.write("GPU DRAW UNREGISTERED\n")
