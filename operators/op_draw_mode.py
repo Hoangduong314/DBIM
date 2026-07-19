@@ -369,6 +369,17 @@ class DBIM_OT_start_tool(bpy.types.Operator):
     target: bpy.props.StringProperty(name="Target Type", default="")
     shape: bpy.props.StringProperty(name="Draw Shape", default="")
     
+    def invoke(self, context, event):
+        if self.shape == 'PICK':
+            return context.window_manager.invoke_props_dialog(self)
+        return self.execute(context)
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        if hasattr(scene, "ifc_DrawSettings") and self.shape == 'PICK':
+            layout.prop(scene.ifc_DrawSettings, "offset")
+
     def execute(self, context):
         scene = context.scene
         if hasattr(scene, "ifc_DrawSettings"):
