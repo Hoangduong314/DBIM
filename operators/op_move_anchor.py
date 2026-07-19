@@ -138,6 +138,16 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
             else:
                 self.locked_initial.append(tuple(obj.ifc_EndPoint))
 
+        # Hide GP meshes during movement
+        try:
+            from ..core.grid_builder import set_grid_gp_visibility
+            set_grid_gp_visibility(self.target_obj, False)
+            for obj, idx in self.locked_endpoints:
+                if obj.name in bpy.data.objects:
+                    set_grid_gp_visibility(obj, False)
+        except Exception:
+            pass
+
         args = (self, context)
         self._handle = bpy.types.SpaceView3D.draw_handler_add(self.draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
         context.window_manager.modal_handler_add(self)
@@ -312,6 +322,19 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
             self.target_obj["dbim_is_moving_anchor"] = False
             self.target_obj.select_set(True)
             context.view_layer.objects.active = self.target_obj
+            
+            try:
+                from ..core.grid_builder import set_grid_gp_visibility, update_grid_gp
+                set_grid_gp_visibility(self.target_obj, True)
+                update_grid_gp(self.target_obj)
+                
+                if getattr(self, 'locked_endpoints', None):
+                    for obj, idx in self.locked_endpoints:
+                        if obj.name in bpy.data.objects:
+                            set_grid_gp_visibility(obj, True)
+                            update_grid_gp(obj)
+            except Exception:
+                pass
             
         if getattr(self, '_handle', None):
             bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')

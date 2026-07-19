@@ -40,8 +40,10 @@ def update_grid_points(self, context):
                 
             if self.type == 'MESH' and self.data:
                 bm = bmesh.new()
-                bm.verts.new(self.ifc_StartPoint)
-                bm.verts.new(self.ifc_EndPoint)
+                v1 = bm.verts.new(self.ifc_StartPoint)
+                v2 = bm.verts.new(self.ifc_EndPoint)
+                e = bm.edges.new((v1, v2))
+                e.hide = True # Hide in viewport but keep for snapping
                 
                 bm.to_mesh(self.data)
                 bm.free()
@@ -49,6 +51,14 @@ def update_grid_points(self, context):
                 # Tag to force redraw
                 if hasattr(self, 'update_tag'):
                     self.update_tag(refresh={'DATA'})
+                    
+                # Update GP if not currently being dragged
+                if not self.get("dbim_is_moving_anchor", False):
+                    from ..core.grid_builder import update_grid_gp
+                    try:
+                        update_grid_gp(self)
+                    except Exception:
+                        pass
                     
         except Exception as e:
             with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
