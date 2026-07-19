@@ -60,16 +60,29 @@ def create_grid_mesh(p1, p2, name):
     
     # Create frame and stroke
     frame = layer.frames.new(0)
-    stroke = frame.strokes.new()
-    stroke.line_width = 30
-    stroke.material_index = 0
     
-    stroke.points.add(2)
-    stroke.points[0].co = p1
-    stroke.points[0].pressure = 1.0
-    stroke.points[0].strength = 1.0
-    stroke.points[1].co = p2
-    stroke.points[1].pressure = 1.0
-    stroke.points[1].strength = 1.0
+    if hasattr(frame, 'strokes'):
+        # Legacy GPv2
+        stroke = frame.strokes.new()
+        stroke.line_width = 30
+        stroke.material_index = 0
+        
+        stroke.points.add(2)
+        stroke.points[0].co = p1
+        stroke.points[0].pressure = 1.0
+        stroke.points[0].strength = 1.0
+        stroke.points[1].co = p2
+        stroke.points[1].pressure = 1.0
+        stroke.points[1].strength = 1.0
+    elif hasattr(frame, 'drawing'):
+        # GPv3 (Blender 4.3+)
+        frame.drawing.add_strokes([2])
+        pos_attr = frame.drawing.attributes['position']
+        pos_attr.data.foreach_set('vector', [p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]])
+        # Set radius if possible
+        if 'radius' in frame.drawing.attributes:
+            rad_attr = frame.drawing.attributes['radius']
+            rad_attr.data.foreach_set('value', [0.03, 0.03]) # 30 line width roughly
+
     
     return obj
