@@ -21,6 +21,8 @@ def draw_grids_3d():
     # Collect all grid segments
     for obj in bpy.context.scene.objects:
         if getattr(obj, "is_IfcGridAxis", False) and obj.type == 'MESH':
+            with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
+                f.write(f"GPU DRAW: Found grid {obj.name}\n")
             # Use the properties instead of geometry to guarantee accurate endpoints
             try:
                 p1 = obj.matrix_world @ bpy.mathutils.Vector(obj.ifc_StartPoint)
