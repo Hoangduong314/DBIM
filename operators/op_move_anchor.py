@@ -57,7 +57,13 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         # Tạm thời gán phím TAB thành lệnh khóa trục X trong Transform Modal Map
         km = context.window_manager.keyconfigs.user.keymaps.get('Transform Modal Map')
         if km:
-            self._temp_kmi = km.keymap_items.new_modal('AXIS_X', 'TAB', 'PRESS')
+            has_tab = False
+            for kmi in km.keymap_items:
+                if kmi.type == 'TAB' and getattr(kmi, "propvalue", "") == 'AXIS_X':
+                    has_tab = True
+                    break
+            if not has_tab:
+                km.keymap_items.new_modal('AXIS_X', 'TAB', 'PRESS')
         
         return {'RUNNING_MODAL'}
 
@@ -110,9 +116,3 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         if getattr(self, 'target_obj', None) and self.target_obj.name in bpy.data.objects:
             self.target_obj.select_set(True)
             context.view_layer.objects.active = self.target_obj
-            
-        if getattr(self, '_temp_kmi', None):
-            km = context.window_manager.keyconfigs.user.keymaps.get('Transform Modal Map')
-            if km:
-                km.keymap_items.remove(self._temp_kmi)
-            self._temp_kmi = None
