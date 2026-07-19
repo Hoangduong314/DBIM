@@ -127,6 +127,10 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         # TAB: Toggle extend mode (free vs along-grid)
         if event.type == 'TAB' and event.value == 'PRESS':
             self.extend_mode = not self.extend_mode
+            # Re-enable lock when switching back to extend mode
+            if self.extend_mode and not self.lock_enabled and self.locked_endpoints:
+                self.lock_enabled = True
+                self.report({'INFO'}, "Grid Lock: ON")
             context.area.tag_redraw()
             return {'RUNNING_MODAL'}
         
