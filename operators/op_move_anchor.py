@@ -1,4 +1,6 @@
 import bpy
+import math
+import mathutils
 
 class DBIM_OT_move_anchor(bpy.types.Operator):
     """Move Anchor (Click-Move-Click) with NATIVE Snapping and Z Lock"""
@@ -27,11 +29,20 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
             
         self.initial_z = anchor_loc[2]
 
+        # Calculate Grid direction for Extension Tracking
+        sp = mathutils.Vector(self.target_obj.ifc_StartPoint)
+        ep = mathutils.Vector(self.target_obj.ifc_EndPoint)
+        vec = ep - sp
+        angle = math.atan2(vec.y, vec.x)
+        
         # Create Dummy Empty
         bpy.ops.object.empty_add(type='PLAIN_AXES', location=anchor_loc)
         self.empty = context.active_object
         self.empty.name = "DBIM_Temp_Anchor"
         self.empty.empty_display_size = 0.5
+        
+        # Align Dummy's Local X axis with the Grid direction
+        self.empty.rotation_euler = (0, 0, angle)
         
         # Ensure only empty is selected
         bpy.ops.object.select_all(action='DESELECT')
@@ -61,7 +72,7 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
         if self._state == 0:
             if event.type == 'LEFTMOUSE' and event.value == 'RELEASE':
                 self._state = 1
-                bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=(True, True, False), orient_type='GLOBAL')
+                bpy.ops.transform.translate('INVOKE_DEFAULT', constraint_axis=(True, True, False), orient_type='LOCAL')
             return {'PASS_THROUGH'}
 
         # State 1: Transform is running natively!
