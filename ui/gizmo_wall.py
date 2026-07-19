@@ -47,9 +47,11 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
                 obj.ifc_EndPoint = (value[0], value[1], obj.ifc_EndPoint[2])
 
         # Gizmo 1 for ifc_StartPoint
-        m1 = self.gizmos.new("GIZMO_GT_move_3d")
-        m1.target_set_handler("offset", get=get_p1, set=set_p1)
-        m1.use_draw_modal = True
+        m1 = self.gizmos.new("GIZMO_GT_button_2d")
+        m1.icon = 'VIEWZOOM'
+        prop = m1.target_set_operator("dbim.move_anchor")
+        prop.anchor_index = 0
+
         
         # Color and visual style
         m1.alpha = 0.5
@@ -58,9 +60,11 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
         self.p1_gizmo = m1
 
         # Gizmo 2 for ifc_EndPoint
-        m2 = self.gizmos.new("GIZMO_GT_move_3d")
-        m2.target_set_handler("offset", get=get_p2, set=set_p2)
-        m2.use_draw_modal = True
+        m2 = self.gizmos.new("GIZMO_GT_button_2d")
+        m2.icon = 'VIEWZOOM'
+        prop = m2.target_set_operator("dbim.move_anchor")
+        prop.anchor_index = 1
+
         
         m2.alpha = 0.5
         m2.alpha_highlight = 1.0
@@ -72,10 +76,10 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
         if obj and getattr(obj, "is_IfcWall", False):
             R = get_direction_matrix(obj)
             self.p1_gizmo.matrix_basis = obj.matrix_world.normalized()
-            self.p1_gizmo.matrix_offset = R
+            self.p1_gizmo.matrix_offset.translation = obj.ifc_StartPoint
             
             self.p2_gizmo.matrix_basis = obj.matrix_world.normalized()
-            self.p2_gizmo.matrix_offset = R
+            self.p2_gizmo.matrix_offset.translation = obj.ifc_EndPoint
 
 def register():
     pass
