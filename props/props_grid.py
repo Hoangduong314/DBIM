@@ -40,20 +40,9 @@ def update_grid_points(self, context):
                 
             if self.type == 'MESH' and self.data:
                 bm = bmesh.new()
-                
-                diff = p2 - p1
-                if diff.length > 0.001:
-                    dir = diff.normalized()
-                    perp = mathutils.Vector((-dir.y, dir.x, 0)) * 0.0001
-                    v1 = bm.verts.new(p1 + perp)
-                    v2 = bm.verts.new(p1 - perp)
-                    v3 = bm.verts.new(p2 - perp)
-                    v4 = bm.verts.new(p2 + perp)
-                    bm.faces.new((v1, v2, v3, v4))
-                else:
-                    v1 = bm.verts.new(p1)
-                    v2 = bm.verts.new(p2)
-                    bm.edges.new((v1, v2))
+                v1 = bm.verts.new(self.ifc_StartPoint)
+                v2 = bm.verts.new(self.ifc_EndPoint)
+                # No edges or faces
                 
                 bm.to_mesh(self.data)
                 bm.free()

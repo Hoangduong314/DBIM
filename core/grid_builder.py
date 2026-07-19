@@ -10,20 +10,9 @@ def create_grid_mesh(p1, p2, name):
     import mathutils
     bm = bmesh.new()
     
-    diff = p2 - p1
-    if diff.length > 0.001:
-        dir = diff.normalized()
-        perp = mathutils.Vector((-dir.y, dir.x, 0)) * 0.0001 # 0.1mm half-width so it looks like a line when selected
-        
-        v1 = bm.verts.new(p1 + perp)
-        v2 = bm.verts.new(p1 - perp)
-        v3 = bm.verts.new(p2 - perp)
-        v4 = bm.verts.new(p2 + perp)
-        bm.faces.new((v1, v2, v3, v4))
-    else:
-        v1 = bm.verts.new(p1)
-        v2 = bm.verts.new(p2)
-        bm.edges.new((v1, v2))
+    v1 = bm.verts.new(p1)
+    v2 = bm.verts.new(p2)
+    # No edges or faces so it doesn't draw any solid lines or selection outlines
     
     mesh = bpy.data.meshes.new(name=f"IfcGridAxis_{name}")
     bm.to_mesh(mesh)
