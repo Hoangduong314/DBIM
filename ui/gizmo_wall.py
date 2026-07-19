@@ -47,8 +47,7 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
                 obj.ifc_EndPoint = (value[0], value[1], obj.ifc_EndPoint[2])
 
         # Gizmo 1 for ifc_StartPoint
-        m1 = self.gizmos.new("GIZMO_GT_button_2d")
-        m1.icon = 'VIEWZOOM'
+        m1 = self.gizmos.new("GIZMO_GT_move_3d")
         prop = m1.target_set_operator("dbim.move_anchor")
         prop.anchor_index = 0
 
@@ -60,8 +59,7 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
         self.p1_gizmo = m1
 
         # Gizmo 2 for ifc_EndPoint
-        m2 = self.gizmos.new("GIZMO_GT_button_2d")
-        m2.icon = 'VIEWZOOM'
+        m2 = self.gizmos.new("GIZMO_GT_move_3d")
         prop = m2.target_set_operator("dbim.move_anchor")
         prop.anchor_index = 1
 
