@@ -206,6 +206,26 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
                 proj_len = v.dot(self.grid_dir)
                 loc = self.grid_origin + self.grid_dir * proj_len
 
+            # AUTO-LOCK CHECK: disengage lock when dragging off-axis
+            if self.lock_enabled and self.locked_endpoints:
+                delta = mathutils.Vector((loc.x - self.initial_loc[0], loc.y - self.initial_loc[1]))
+                if delta.length > 0.01:
+                    # Perpendicular distance from grid line
+                    perp_dist = abs(delta.x * (-self.grid_dir.y) + delta.y * self.grid_dir.x)
+                    if perp_dist > 0.05:
+                        # Dragged off-axis: auto-unlock and restore locked endpoints
+                        self.lock_enabled = False
+                        for i, (obj, idx) in enumerate(self.locked_endpoints):
+                            if obj.name not in bpy.data.objects:
+                                continue
+                            orig = self.locked_initial[i]
+                            if idx == 0:
+                                obj.ifc_StartPoint = orig
+                            else:
+                                obj.ifc_EndPoint = orig
+                            obj.update_tag()
+                        self.report({'INFO'}, "Grid Lock: AUTO OFF (dragged off-axis)")
+
             # APPLY RESULT to target
             if self.anchor_index == 0:
                 self.target_obj.ifc_StartPoint = (loc.x, loc.y, self.initial_z)
