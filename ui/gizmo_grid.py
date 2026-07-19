@@ -50,8 +50,6 @@ class DBIM_GGT_grid_endpoints(bpy.types.GizmoGroup):
         m1 = self.gizmos.new("GIZMO_GT_move_3d")
         m1.target_set_handler("offset", get=get_p1, set=set_p1)
         m1.use_draw_modal = True
-        if hasattr(m1, "draw_options"):
-            m1.draw_options = {'X', 'Y', 'PLANE_XY'}
         
         # Style
         m1.alpha = 0.5
@@ -63,8 +61,6 @@ class DBIM_GGT_grid_endpoints(bpy.types.GizmoGroup):
         m2 = self.gizmos.new("GIZMO_GT_move_3d")
         m2.target_set_handler("offset", get=get_p2, set=set_p2)
         m2.use_draw_modal = True
-        if hasattr(m2, "draw_options"):
-            m2.draw_options = {'X', 'Y', 'PLANE_XY'}
         
         # Style
         m2.alpha = 0.5
@@ -78,11 +74,9 @@ class DBIM_GGT_grid_endpoints(bpy.types.GizmoGroup):
             R = get_direction_matrix(obj)
             self.p1_gizmo.matrix_basis = obj.matrix_world.normalized()
             self.p1_gizmo.matrix_offset = R
-            self.p1_gizmo.matrix_offset.translation = obj.ifc_StartPoint
             
             self.p2_gizmo.matrix_basis = obj.matrix_world.normalized()
             self.p2_gizmo.matrix_offset = R
-            self.p2_gizmo.matrix_offset.translation = obj.ifc_EndPoint
 
 def register():
     pass
