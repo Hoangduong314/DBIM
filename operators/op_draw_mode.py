@@ -178,15 +178,21 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
         region = context.region
         rv3d = context.region_data
         coord = event.mouse_region_x, event.mouse_region_y
-        from bpy_extras.view3d_utils import region_2d_to_origin_3d, region_2d_to_vector_3d
+        from bpy_extras.view3d_utils import region_2d_to_origin_3d, region_2d_to_vector_3d, location_3d_to_region_2d
         
         view_vector = region_2d_to_vector_3d(region, rv3d, coord)
         ray_origin = region_2d_to_origin_3d(region, rv3d, coord)
         
+        settings = context.scene.ifc_DrawSettings
+        
+        p1_world = None
+        p2_world = None
+        
+        # 1. Try standard ray_cast (hits faces)
         result, location, normal, index, obj, matrix = context.scene.ray_cast(
             context.view_layer.depsgraph, ray_origin, view_vector)
         
-        if result and obj and obj.type == 'MESH':
+        if result and obj and obj.type == 'MESH' and len(obj.data.polygons) > 0:
             mesh = obj.data
             poly = mesh.polygons[index]
             closest_edge = None
@@ -214,17 +220,59 @@ class DBIM_OT_draw_mode(bpy.types.Operator):
                 p1_world = obj.matrix_world @ p1_local
                 p2_world = obj.matrix_world @ p2_local
                 
-                p1_2d = mathutils.Vector((p1_world.x, p1_world.y, 0))
-                p2_2d = mathutils.Vector((p2_world.x, p2_world.y, 0))
+        # 2. If ray_cast fails, try finding nearest edge in 2D for linework (0 faces)
+        if p1_world is None:
+            mouse_pos = mathutils.Vector(coord)
+            min_dist_2d = 20.0 # 20 pixels snap distance
+            
+            for obj in context.visible_objects:
+                if obj.type == 'MESH' and len(obj.data.polygons) == 0:
+                    mesh = obj.data
+                    matrix = obj.matrix_world
+                    for edge in mesh.edges:
+                        v1 = matrix @ mesh.vertices[edge.vertices[0]].co
+                        v2 = matrix @ mesh.vertices[edge.vertices[1]].co
+                        
+                        p1_2d = location_3d_to_region_2d(region, rv3d, v1)
+                        p2_2d = location_3d_to_region_2d(region, rv3d, v2)
+                        
+                        if not p1_2d or not p2_2d:
+                            continue
+                            
+                        # point to line segment distance in 2D
+                        line_vec = p2_2d - p1_2d
+                        line_len = line_vec.length
+                        if line_len < 0.001:
+                            continue
+                            
+                        line_dir = line_vec / line_len
+                        mouse_vec = mouse_pos - p1_2d
+                        proj = mouse_vec.dot(line_dir)
+                        
+                        dist = 0
+                        if proj <= 0:
+                            dist = (mouse_pos - p1_2d).length
+                        elif proj >= line_len:
+                            dist = (mouse_pos - p2_2d).length
+                        else:
+                            closest_pt = p1_2d + line_dir * proj
+                            dist = (mouse_pos - closest_pt).length
+                            
+                        if dist < min_dist_2d:
+                            min_dist_2d = dist
+                            p1_world = v1
+                            p2_world = v2
+
+        if p1_world and p2_world:
+            p1_2d = mathutils.Vector((p1_world.x, p1_world.y, 0))
+            p2_2d = mathutils.Vector((p2_world.x, p2_world.y, 0))
+            
+            if (p2_2d - p1_2d).length > 0.001:
+                perp = mathutils.Vector((-(p2_2d.y - p1_2d.y), (p2_2d.x - p1_2d.x), 0)).normalized()
+                p1_offset = p1_2d + perp * settings.offset
+                p2_offset = p2_2d + perp * settings.offset
                 
-                settings = context.scene.ifc_DrawSettings
-                
-                if (p2_2d - p1_2d).length > 0.001:
-                    perp = mathutils.Vector((-(p2_2d.y - p1_2d.y), (p2_2d.x - p1_2d.x), 0)).normalized()
-                    p1_offset = p1_2d + perp * settings.offset
-                    p2_offset = p2_2d + perp * settings.offset
-                    
-                    return [p1_offset, p2_offset]
+                return [p1_offset, p2_offset]
         return []
 
     def dispatch_creation(self, context, points):
