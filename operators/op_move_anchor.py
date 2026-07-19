@@ -312,18 +312,48 @@ class DBIM_OT_move_anchor(bpy.types.Operator):
                 batch.draw(shader)
                 gpu.state.line_width_set(1.0)
                 
-        # 2. Draw Extension Tracking Line if extend_mode is active
+        # 2. Draw Extension Tracking Line as CENTER LINE (long-short-long dashed)
         if getattr(self_ref, 'extend_mode', False):
             p1 = self_ref.grid_origin - self_ref.grid_dir * 1000
             p2 = self_ref.grid_origin + self_ref.grid_dir * 1000
             p1_2d = location_3d_to_region_2d(context.region, context.region_data, p1)
             p2_2d = location_3d_to_region_2d(context.region, context.region_data, p2)
             if p1_2d and p2_2d:
-                batch = batch_for_shader(shader, 'LINES', {"pos": [p1_2d, p2_2d]})
-                shader.uniform_float("color", (1.0, 0.2, 0.2, 0.6))
-                gpu.state.line_width_set(1.5)
-                batch.draw(shader)
-                gpu.state.line_width_set(1.0)
+                # Generate center line pattern: ———— · ———— · ————
+                dx = p2_2d.x - p1_2d.x
+                dy = p2_2d.y - p1_2d.y
+                line_len = math.sqrt(dx * dx + dy * dy)
+                if line_len > 0:
+                    nx = dx / line_len
+                    ny = dy / line_len
+                    
+                    long_dash = 20.0
+                    short_dash = 4.0
+                    gap = 6.0
+                    pattern_len = long_dash + gap + short_dash + gap
+                    
+                    dashes = []
+                    t = 0.0
+                    while t < line_len:
+                        # Long dash
+                        t_end = min(t + long_dash, line_len)
+                        dashes.append((p1_2d.x + nx * t, p1_2d.y + ny * t))
+                        dashes.append((p1_2d.x + nx * t_end, p1_2d.y + ny * t_end))
+                        t = t_end + gap
+                        if t >= line_len:
+                            break
+                        # Short dash
+                        t_end = min(t + short_dash, line_len)
+                        dashes.append((p1_2d.x + nx * t, p1_2d.y + ny * t))
+                        dashes.append((p1_2d.x + nx * t_end, p1_2d.y + ny * t_end))
+                        t = t_end + gap
+                    
+                    if dashes:
+                        batch = batch_for_shader(shader, 'LINES', {"pos": dashes})
+                        shader.uniform_float("color", (1.0, 0.2, 0.2, 0.6))
+                        gpu.state.line_width_set(1.5)
+                        batch.draw(shader)
+                        gpu.state.line_width_set(1.0)
 
         # 3. Draw Lock indicators on locked endpoints
         if getattr(self_ref, 'locked_endpoints', None) and getattr(self_ref, 'lock_enabled', True):
