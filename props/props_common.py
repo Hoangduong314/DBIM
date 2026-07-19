@@ -9,14 +9,10 @@ def update_ifc_points(self, context):
         update_grid_points(self, context)
 
 def update_view_scale(self, context):
-    # When scale changes, update all grid GPs to adjust their dash sizes
-    from ..core.grid_builder import update_grid_gp
-    for obj in context.scene.objects:
-        if getattr(obj, "is_IfcGridAxis", False):
-            try:
-                update_grid_gp(obj)
-            except Exception:
-                pass
+    # Trigger viewport redraw to immediately reflect new dash scale
+    for area in context.screen.areas:
+        if area.type == 'VIEW_3D':
+            area.tag_redraw()
 
 scale_items = [
     ('10', "1:10", "1:10 Scale"),
