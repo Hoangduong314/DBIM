@@ -34,10 +34,11 @@ def draw_grids_3d():
     if not lines:
         return
 
-    # Generate Dash points (Dot Dash pattern: Long Dash - short gap - short dash - short gap)
-    dash_long = 15.0 / scale_factor
-    gap_short = 4.0 / scale_factor
-    dash_short = 3.0 / scale_factor
+    # Assume dash lengths in real-world meters
+    # A standard long dash in BIM is around 1.5m, short dash 0.3m, gap 0.4m at 1:100 scale
+    dash_long = 1.5 * scale_factor
+    gap_short = 0.4 * scale_factor
+    dash_short = 0.3 * scale_factor
     
     dash_verts = []
     
@@ -71,22 +72,38 @@ def draw_grids_3d():
         return
 
     try:
-        if bpy.app.version >= (4, 0, 0):
-            shader = gpu.shader.from_builtin('UNIFORM_COLOR')
-        else:
-            shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        is_polyline = True
     except:
-        shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        try:
+            shader = gpu.shader.from_builtin('3D_POLYLINE_UNIFORM_COLOR')
+            is_polyline = True
+        except:
+            try:
+                shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+                is_polyline = False
+            except:
+                shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+                is_polyline = False
 
     try:
         batch = batch_for_shader(shader, 'LINES', {"pos": dash_verts})
 
         gpu.state.blend_set('ALPHA')
-        gpu.state.line_width_set(1.5)
+        
+        if is_polyline:
+            gpu.state.line_width_set(1.5)
+            shader.uniform_float("lineWidth", 1.5)
+            # Polyline needs viewport size sometimes, but let's just stick to color first
+        else:
+            gpu.state.line_width_set(1.5)
 
         shader.bind()
-        shader.uniform_float("color", (0.8, 0.2, 0.2, 1.0)) # Red dashed line
+        shader.uniform_float("color", (0.8, 0.2, 0.2, 1.0))
+        
+        gpu.state.depth_test_set('NONE')
         batch.draw(shader)
+        gpu.state.depth_test_set('LESS_EQUAL')
         
         gpu.state.blend_set('NONE')
         gpu.state.line_width_set(1.0)
