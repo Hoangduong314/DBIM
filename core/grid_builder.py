@@ -92,12 +92,14 @@ def create_grid_gp(grid_obj, p1, p2):
     if len(gp_data.layers) > 0:
         layer = gp_data.layers[0]
         
-        # Clear existing frames
-        for frame in list(layer.frames):
-            layer.frames.remove(frame)
-        
-        # Create new frame with stroke
-        frame = layer.frames.new(0)
+        # Reuse existing frame or create new one
+        if len(layer.frames) > 0:
+            frame = layer.frames[0]
+            # Clear existing strokes in this frame
+            frame.clear()
+        else:
+            frame = layer.frames.new(0)
+            
         stroke = frame.strokes.new()
         stroke.line_width = 30  # base line width in pixels
         stroke.material_index = 0
