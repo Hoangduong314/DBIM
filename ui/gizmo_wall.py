@@ -33,7 +33,7 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
         def set_p1(value):
             obj = bpy.context.active_object
             if obj and getattr(obj, "is_IfcWall", False):
-                obj.ifc_StartPoint = value
+                obj.ifc_StartPoint = (value[0], value[1], obj.ifc_StartPoint[2])
 
         def get_p2():
             obj = bpy.context.active_object
@@ -44,12 +44,14 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
         def set_p2(value):
             obj = bpy.context.active_object
             if obj and getattr(obj, "is_IfcWall", False):
-                obj.ifc_EndPoint = value
+                obj.ifc_EndPoint = (value[0], value[1], obj.ifc_EndPoint[2])
 
         # Gizmo 1 for ifc_StartPoint
         m1 = self.gizmos.new("GIZMO_GT_move_3d")
         m1.target_set_handler("offset", get=get_p1, set=set_p1)
         m1.use_draw_modal = True
+        if hasattr(m1, "draw_options"):
+            m1.draw_options = {'X', 'Y', 'PLANE_XY'}
         
         # Color and visual style
         m1.alpha = 0.5
@@ -61,6 +63,8 @@ class DBIM_GGT_wall_endpoints(bpy.types.GizmoGroup):
         m2 = self.gizmos.new("GIZMO_GT_move_3d")
         m2.target_set_handler("offset", get=get_p2, set=set_p2)
         m2.use_draw_modal = True
+        if hasattr(m2, "draw_options"):
+            m2.draw_options = {'X', 'Y', 'PLANE_XY'}
         
         m2.alpha = 0.5
         m2.alpha_highlight = 1.0
