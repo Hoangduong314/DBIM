@@ -1,0 +1,19 @@
+schema_version = "1.0.0"
+
+id = "dbim"
+version = "1.0.0"
+name = "DBIM"
+tagline = "BIM tools for Blender"
+maintainer = "DBIM Creator"
+type = "add-on"
+
+# Yêu cầu phiên bản Blender tối thiểu để chạy extension này
+blender_version_min = "4.2.0"
+
+# Mô tả ngắn
+description = "Architecture and BIM tools for Blender. Features interactive parametric wall drawing."
+
+# License bắt buộc theo chuẩn Blender Extension
+license = [
+    "SPDX-License-Identifier: GPL-2.0-or-later"
+]

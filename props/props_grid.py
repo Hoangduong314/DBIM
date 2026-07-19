@@ -1,0 +1,81 @@
+import bpy
+
+def get_next_grid_name(current_name):
+    # Auto increment letters or numbers
+    if not current_name:
+        return "1"
+        
+    # Try to increment as a number
+    try:
+        num = int(current_name)
+        return str(num + 1)
+    except ValueError:
+        pass
+        
+    # Try to increment as a letter (e.g. A -> B, Z -> AA)
+    if current_name.isalpha():
+        # Simple single character increment
+        if len(current_name) == 1:
+            char = current_name.upper()
+            if char == 'Z':
+                return 'AA'
+            return chr(ord(char) + 1)
+            
+    return current_name + "_new"
+
+def update_grid_points(self, context):
+    if not self.is_IfcGridAxis:
+        return
+        
+    # Ensure mesh updates when points are changed
+    if self.type == 'MESH':
+        try:
+            import mathutils
+            p1 = mathutils.Vector(self.ifc_StartPoint)
+            p2 = mathutils.Vector(self.ifc_EndPoint)
+            
+            with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
+                f.write(f"Updating grid points for {self.name}: p1={p1}, p2={p2}\n")
+                
+            mesh = self.data
+            if len(mesh.vertices) >= 2:
+                mesh.vertices[0].co = p1
+                mesh.vertices[1].co = p2
+                mesh.update()
+                
+                # Tag to force redraw
+                if hasattr(self, 'update_tag'):
+                    self.update_tag(refresh={'DATA'})
+                    
+        except Exception as e:
+            with open(r"G:\My Drive\Libraries\Blender\DBIM\debug.log", "a") as f:
+                f.write(f"ERROR: {str(e)}\n")
+
+class DBIM_GridSettings(bpy.types.PropertyGroup):
+    next_name: bpy.props.StringProperty(
+        name="Next Grid Name",
+        description="Name for the next grid to be drawn",
+        default="1"
+    )
+
+def register():
+    bpy.types.Object.is_IfcGridAxis = bpy.props.BoolProperty(
+        name="Is DBIM Grid",
+        description="True if this object is a DBIM Grid line",
+        default=False
+    )
+    bpy.types.Object.ifc_AxisTag = bpy.props.StringProperty(
+        name="Grid Name",
+        description="Name/Label of the grid line",
+        default=""
+    )
+    
+    bpy.types.Scene.ifc_GridSettings = bpy.props.PointerProperty(type=DBIM_GridSettings)
+
+def unregister():
+    if hasattr(bpy.types.Object, "is_IfcGridAxis"):
+        del bpy.types.Object.is_IfcGridAxis
+    if hasattr(bpy.types.Object, "ifc_AxisTag"):
+        del bpy.types.Object.ifc_AxisTag
+    if hasattr(bpy.types.Scene, "ifc_GridSettings"):
+        del bpy.types.Scene.ifc_GridSettings
